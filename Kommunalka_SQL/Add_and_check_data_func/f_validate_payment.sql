@@ -5,6 +5,8 @@ CREATE OR REPLACE FUNCTION f_validate_payment(
 )
 RETURNS VOID AS
 $$
+DECLARE
+    v_exists BOOLEAN;
 BEGIN
     -- Проверка месяца
     IF p_month < 1 OR p_month > 12 THEN
@@ -12,16 +14,24 @@ BEGIN
     END IF;
     
     -- Проверка года
-    IF p_year < 2000 OR p_year > 2100 THEN
-        RAISE EXCEPTION 'Год % недопустим. Год должен быть от 2000 до 2100', p_year;
+    IF p_year < 2025 OR p_year > 2050 THEN
+        RAISE EXCEPTION 'Год % недопустим. Год должен быть от 2025 до 2050', p_year;
     END IF;
     
     -- Проверка суммы
     IF p_utilities < 0 THEN
         RAISE EXCEPTION 'Сумма коммуналки не может быть отрицательной: %', p_utilities;
     END IF;
+      
+    -- Проверка на дубликат
+    SELECT EXISTS(
+        SELECT 1 FROM t_payments 
+        WHERE payment_year = p_year AND payment_month = p_month
+    ) INTO v_exists;
     
-    -- Если все проверки пройдены, функция просто завершается
+    IF v_exists THEN
+        RAISE EXCEPTION 'Запись за % месяц % года уже существует', p_month, p_year;
+    END IF;
 END;
 $$
 LANGUAGE plpgsql;
